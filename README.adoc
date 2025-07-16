@@ -5,7 +5,7 @@ image:https://circleci.com/gh/instaclustr/esop.svg?style=svg["Instaclustr",link=
 
 _Swiss knife for Apache Cassandra backup and restore_
 
-## 🔧 Atlan Fork - Version 3.0.1-atlan.1
+## 🔧 Atlan Fork - Version 3.0.1-atlan.2
 
 This is a fork of the original Instaclustr Esop repository based on version 3.0.1, which provides support for Cassandra 3.x (we use Cassandra 3). While newer versions of Esop exist, this version is maintained for compatibility with our Cassandra 3 deployment.
 

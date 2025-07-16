@@ -5,7 +5,7 @@
     
     <groupId>com.instaclustr</groupId>
     <artifactId>esop</artifactId>
-    <version>3.0.1-atlan.1</version>
+    <version>3.0.1-atlan.2</version>
     
     <name>instaclustr-esop</name>
     <description>Backup and restoration tooling for Cassandra</description>
