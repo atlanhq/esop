@@ -46,6 +46,27 @@ public class SSTableUtils {
     private static final Pattern CHECKSUM_RE = Pattern.compile("^([a-zA-Z0-9]+).*");
     private static final HashService hashService = new HashServiceImpl(new HashSpec());
 
+    // Components Cassandra rewrites in place after a snapshot is taken: repair / anticompaction rewrites
+    // repairedAt in Statistics.db and index summary redistribution rewrites Summary.db. The uploaded copy
+    // can therefore legitimately differ from the hash recorded in the manifest. Both still belong to the
+    // same sstable, since the remote path is keyed by the sstable hash derived from its Digest file.
+    private static final ImmutableList<String> MUTABLE_COMPONENTS = ImmutableList.of("Statistics.db", "Summary.db");
+
+    /**
+     * Tells whether the file is an sstable component which Cassandra may rewrite after a snapshot,
+     * so a hash mismatch against the manifest does not mean the file is corrupted.
+     */
+    public static boolean isMutableComponent(final Path path) {
+        if (path == null || path.getFileName() == null) {
+            return false;
+        }
+        final String fileName = path.getFileName().toString();
+        if (!SSTABLE_RE.matcher(fileName).matches()) {
+            return false;
+        }
+        return MUTABLE_COMPONENTS.stream().anyMatch(component -> fileName.endsWith("-" + component));
+    }
+
     public static String sstableHash(Path path) throws IOException {
         final Matcher matcher = SSTABLE_RE.matcher(path.getFileName().toString());
         if (!matcher.matches()) {

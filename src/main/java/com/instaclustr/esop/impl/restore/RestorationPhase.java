@@ -27,6 +27,7 @@ import com.instaclustr.esop.impl.CassandraData;
 import com.instaclustr.esop.impl.DatabaseEntities;
 import com.instaclustr.esop.impl.Manifest;
 import com.instaclustr.esop.impl.ManifestEntry;
+import com.instaclustr.esop.impl.SSTableUtils;
 import com.instaclustr.esop.impl._import.ImportOperation;
 import com.instaclustr.esop.impl._import.ImportOperationRequest;
 import com.instaclustr.esop.impl.interaction.CassandraSameTokens;
@@ -741,6 +742,11 @@ public abstract class RestorationPhase {
                     try {
                         this.ctxt.hashService.verify(entry.localFile, entry.hash);
                     } catch (final Exception ex) {
+                        if (SSTableUtils.isMutableComponent(entry.localFile)) {
+                            logger.warn(String.format("Accepting %s despite hash mismatch, it is a mutable sstable component: %s",
+                                                      entry.localFile, ex.getMessage()));
+                            continue;
+                        }
                         logger.error(ex.getMessage());
                         corruptedFiles.add(entry.localFile.toString());
                     }
