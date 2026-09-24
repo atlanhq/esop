@@ -16,6 +16,7 @@ import com.instaclustr.esop.impl.AbstractTracker;
 import com.instaclustr.esop.impl.ManifestEntry;
 import com.instaclustr.esop.impl.ManifestEntry.Type;
 import com.instaclustr.esop.impl.RemoteObjectReference;
+import com.instaclustr.esop.impl.SSTableUtils;
 import com.instaclustr.esop.impl.hash.HashService.HashVerificationException;
 import com.instaclustr.esop.impl.hash.HashServiceImpl;
 import com.instaclustr.esop.impl.hash.HashSpec;
@@ -106,7 +107,7 @@ public class DownloadTracker extends AbstractTracker<DownloadUnit, DownloadSessi
                     // hash upon downloading
                     try {
                         if (manifestEntry.type == Type.FILE) {
-                            new HashServiceImpl(hashSpec).verify(localPath, manifestEntry.hash);
+                            verify(localPath);
                         }
                     } catch (final HashVerificationException ex) {
                         // delete it if has is wrong so on the next try, it will be missing and we will download it again
@@ -123,7 +124,7 @@ public class DownloadTracker extends AbstractTracker<DownloadUnit, DownloadSessi
                     logger.info(String.format("Skipping download of file %s to %s, file already exists locally.",
                                               remoteObjectReference.getObjectKey(), manifestEntry.localFile));
                     // if it exists, verify its hash to be sure it was not altered
-                    new HashServiceImpl(hashSpec).verify(localPath, manifestEntry.hash);
+                    verify(localPath);
                     state = FINISHED;
                 } else {
                     // if it exists and manifest does not have hash field, consider it to be finished without any check
@@ -136,6 +137,21 @@ public class DownloadTracker extends AbstractTracker<DownloadUnit, DownloadSessi
             }
 
             return null;
+        }
+
+        // A hash mismatch on Statistics.db / Summary.db is expected because Cassandra rewrites them after
+        // the snapshot. Deleting them would leave the sstable unloadable ("Stats component is missing"),
+        // so keep the file and only warn. Every other component must match the manifest.
+        private void verify(final Path localPath) throws HashVerificationException {
+            try {
+                new HashServiceImpl(hashSpec).verify(localPath, manifestEntry.hash);
+            } catch (final HashVerificationException ex) {
+                if (!SSTableUtils.isMutableComponent(localPath)) {
+                    throw ex;
+                }
+                logger.warn(String.format("Accepting %s despite hash mismatch, it is a mutable sstable component: %s",
+                                          localPath, ex.getMessage()));
+            }
         }
     }
 }

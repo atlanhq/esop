@@ -1,10 +1,12 @@
 package com.instaclustr.esop.impl.restore.strategy;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +115,16 @@ public class InPlaceRestorationStrategy implements RestorationStrategy {
                                                          operation.request.snapshotTag, operation.request.concurrentConnections);
                 downloadSession.waitUntilConsideredFinished();
                 downloadTracker.cancelIfNecessary(downloadSession);
+
+                // Without this the operation completes successfully even though files failed to download
+                // (or were deleted on hash mismatch), leaving sstables Cassandra cannot load.
+                final List<DownloadUnit> failedUnits = downloadSession.getFailedUnits();
+
+                if (!failedUnits.isEmpty()) {
+                    final String message = failedUnits.stream().map(unit -> unit.getManifestEntry().objectKey.toString()).collect(Collectors.joining(","));
+                    logger.error(message);
+                    throw new IOException(format("Unable to download files successfully: %s", message));
+                }
             } finally {
                 downloadTracker.removeSession(downloadSession);
             }
