@@ -419,11 +419,13 @@ public class Manifest implements Cloneable {
         }
 
         public boolean isOnlyInOneManifest(final String manifestEntry) {
-            return files.entrySet().stream().filter(entry -> entry.getKey().equals(manifestEntry)).findFirst().map(e -> e.getValue().size()).orElse(0) == 1;
+            final List<String> manifests = files.get(manifestEntry);
+            return manifests != null && manifests.size() == 1;
         }
 
         public boolean isInMultipleManifests(final String manifestEntry) {
-            return files.entrySet().stream().filter(entry -> entry.getKey().equals(manifestEntry)).findFirst().map(e -> e.getValue().size()).orElse(0) > 1;
+            final List<String> manifests = files.get(manifestEntry);
+            return manifests != null && manifests.size() > 1;
         }
 
         public int count(final String manifestEntry) {
