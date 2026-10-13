@@ -395,7 +395,7 @@ public class Manifest implements Cloneable {
             final long t1 = extractTimestamp(manifestPath1);
             final long t2 = extractTimestamp(manifestPath2);
             // older at the bottom, newer at top
-            return (int) (t2 - t1);
+            return Long.compare(t2, t1);
         }
     }
 
