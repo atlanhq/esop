@@ -34,6 +34,7 @@ import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.BlobListingDetails;
 import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
+import com.microsoft.azure.storage.blob.CloudBlobDirectory;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.azure.storage.blob.ListBlobItem;
 
@@ -201,7 +202,12 @@ public class AzureRestorer extends Restorer {
     public void downloadManifestsToDirectory(Path downloadDir) throws Exception {
         FileUtils.createDirectory(downloadDir);
         FileUtils.cleanDirectory(downloadDir.toFile());
-        final List<String> manifestKeys = getBlobPaths(list(""), s -> s.contains("manifests"));
+        final List<String> manifestKeys = new ArrayList<>();
+        for (final String dcPath : listDirectories(request.storageLocation.clusterId + "/")) {
+            for (final String nodePath : listDirectories(dcPath)) {
+                manifestKeys.addAll(getBlobPaths(list(nodePath + "manifests/"), s -> true));
+            }
+        }
         for (String o: manifestKeys) {
             Path manifestPath = Paths.get(o).subpath(1, 6);
             Path destination = downloadDir.resolve(manifestPath);
@@ -310,6 +316,16 @@ public class AzureRestorer extends Restorer {
             .resolve(prefix).toString();
 
         return list(blobPrefix);
+    }
+
+    private List<String> listDirectories(final String prefix) throws Exception {
+        final List<String> directories = new ArrayList<>();
+        for (final ListBlobItem item : blobContainer.listBlobs(prefix, false, EnumSet.noneOf(BlobListingDetails.class), null, null)) {
+            if (item instanceof CloudBlobDirectory) {
+                directories.add(((CloudBlobDirectory) item).getPrefix());
+            }
+        }
+        return directories;
     }
 
     private Iterable<ListBlobItem> list(final String prefix) {

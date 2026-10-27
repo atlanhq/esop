@@ -206,8 +206,12 @@ public class GCPRestorer extends Restorer {
     public void downloadManifestsToDirectory(Path downloadDir) throws Exception {
         FileUtils.createDirectory(downloadDir);
         FileUtils.cleanDirectory(downloadDir.toFile());
-        final List<String> manifestKeys = getBlobPaths(storage.list(storageLocation.bucket),
-                s -> s.contains("manifests"));
+        final List<String> manifestKeys = new ArrayList<>();
+        for (final String dcPath : listDirectories(storageLocation.bucket, storageLocation.clusterId + "/")) {
+            for (final String nodePath : listDirectories(storageLocation.bucket, dcPath)) {
+                manifestKeys.addAll(getBlobPaths(list(storageLocation.bucket, nodePath + "manifests/"), s -> !s.endsWith("/")));
+            }
+        }
         for (String o: manifestKeys) {
             Path manifestPath = Paths.get(o);
             Path destination = downloadDir.resolve(manifestPath);
@@ -307,6 +311,13 @@ public class GCPRestorer extends Restorer {
                                                     prefix.toString());
 
         return list(bucket, resolvedPrefix);
+    }
+
+    private List<String> listDirectories(final String bucket, final String prefix) {
+        return StreamSupport.stream(list(bucket, prefix).iterateAll().spliterator(), false)
+                            .filter(Blob::isDirectory)
+                            .map(BlobInfo::getName)
+                            .collect(toList());
     }
 
     private Page<Blob> list(final String bucket, final String prefix) {
